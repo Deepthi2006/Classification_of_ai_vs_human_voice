@@ -6,7 +6,6 @@ import os
 import numpy as np
 from pydub import AudioSegment
 import librosa
-from transformers import pipeline
 
 app = FastAPI(title="AI Voice Detection API")
 
@@ -34,27 +33,9 @@ class VoiceRequest(BaseModel):
 
 
 # =========================
-# Load Models (Lazy Loading for Free Tier)
+# Signal-Only Mode (Free Tier)
 # =========================
-print("Initializing AI Voice Detection API...")
-
-classifier = None
-
-def load_classifier():
-    """Load model only on first request to save memory on startup"""
-    global classifier
-    if classifier is None:
-        print("Loading classifier on first request...")
-        try:
-            classifier = pipeline(
-                "audio-classification",
-                model="superb/wav2vec2-base-superb-ks",
-                device=-1  # CPU only to save memory
-            )
-            print("✓ Classifier loaded!")
-        except Exception as e:
-            print(f"Error loading classifier: {e}")
-    return classifier
+print("Initializing AI Voice Detection API (signal-only mode)...")
 
 # =========================
 # Signal Analysis
@@ -127,27 +108,10 @@ def detect_voice(
         signal_score = compute_signal_scores(y, sr)
 
         # =========================
-        # ML Classification
-        # =========================
-        clf = load_classifier()  # Load on first request
-        
-        if clf is None:
-            ml_score = 0.5  # Default middle score if model failed to load
-        else:
-            try:
-                result = clf(wav_path)
-                ml_score = result[0]["score"] if result else 0.5
-            except Exception as e:
-                print(f"Classification error: {e}")
-                ml_score = 0.5
-
-        # =========================
         # FINAL CONFIDENCE CALCULATION
         # =========================
-        final_score = (
-            0.6 * ml_score +           # ML model (60%)
-            0.4 * (1 - signal_score)   # Signal analysis (40%)
-        )
+        # Higher score means more AI-like based on acoustic consistency
+        final_score = 1 - signal_score
 
         final_score = float(np.clip(final_score, 0, 1))
 
@@ -157,14 +121,14 @@ def detect_voice(
         if final_score >= 0.60:
             classification = "AI-generated"
             explanation = (
-                "Audio classification indicates synthetic/AI-generated speech "
-                "based on acoustic patterns and model analysis."
+                "Audio signal features indicate synthetic/AI-generated speech "
+                "based on acoustic consistency patterns."
             )
         else:
             classification = "Human-generated"
             explanation = (
-                "Audio classification indicates natural human speech "
-                "with typical human acoustic characteristics."
+                "Audio signal features indicate natural human speech "
+                "with typical acoustic variability."
             )
 
         return {
