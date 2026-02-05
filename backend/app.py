@@ -11,6 +11,20 @@ from transformers import pipeline
 app = FastAPI(title="AI Voice Detection API")
 
 # =========================
+# Health Check Endpoint
+# =========================
+@app.get("/")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "AI Voice Detection API",
+        "version": "1.0.0",
+        "endpoints": {
+            "POST /detect-voice": "Detect AI vs Human voice"
+        }
+    }
+
+# =========================
 # Request Model
 # =========================
 class VoiceRequest(BaseModel):
