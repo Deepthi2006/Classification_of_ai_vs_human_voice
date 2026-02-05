@@ -9,10 +9,9 @@ librosa==0.10.1
 soundfile==0.12.1
 numpy==1.24.3
 
-# ML/AI
+# ML/AI (CPU-only inference)
 torch==2.1.2
 transformers==4.36.2
 
 # Additional dependencies
 scipy==1.11.4
-numba==0.58.1

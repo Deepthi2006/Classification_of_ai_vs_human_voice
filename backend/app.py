@@ -34,21 +34,27 @@ class VoiceRequest(BaseModel):
 
 
 # =========================
-# Load Models
+# Load Models (Lazy Loading for Free Tier)
 # =========================
-print("Loading models...")
+print("Initializing AI Voice Detection API...")
 
-# Use lightweight model for free tier (512MB limit)
-# This single model is efficient and works well for spoof detection
-try:
-    classifier = pipeline(
-        "audio-classification",
-        model="superb/wav2vec2-base-superb-ks"
-    )
-    print("✓ Model loaded successfully!")
-except Exception as e:
-    print(f"Error loading model: {e}")
-    classifier = None
+classifier = None
+
+def load_classifier():
+    """Load model only on first request to save memory on startup"""
+    global classifier
+    if classifier is None:
+        print("Loading classifier on first request...")
+        try:
+            classifier = pipeline(
+                "audio-classification",
+                model="superb/wav2vec2-base-superb-ks",
+                device=-1  # CPU only to save memory
+            )
+            print("✓ Classifier loaded!")
+        except Exception as e:
+            print(f"Error loading classifier: {e}")
+    return classifier
 
 # =========================
 # Signal Analysis
@@ -123,11 +129,13 @@ def detect_voice(
         # =========================
         # ML Classification
         # =========================
-        if classifier is None:
+        clf = load_classifier()  # Load on first request
+        
+        if clf is None:
             ml_score = 0.5  # Default middle score if model failed to load
         else:
             try:
-                result = classifier(wav_path)
+                result = clf(wav_path)
                 ml_score = result[0]["score"] if result else 0.5
             except Exception as e:
                 print(f"Classification error: {e}")
